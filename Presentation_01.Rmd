@@ -1,0 +1,164 @@
+---
+titlD: "Presentation_01"
+author: "Md. Shahadat Hossain"
+datD: "2 October 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# Quietly make sure all the required packages are installed
+invisible(lapply(c('quantmod', 'dplyr', 'tidyquant','tidyverse', 'XML', "rvest", "TTR"), function(pkg) {
+  if (system.file(package = pkg) == '')
+    install.packages(pkg)
+}))
+```
+
+```{r,include=TRUE, warning=FALSE, message=FALSE}
+library(quantmod)
+library(dplyr)
+library(tidyquant)
+library(tidyverse)
+library(XML)
+library(rvest)
+library(TTR)
+```
+
+With the following code we will different indexes available in the market. 
+
+```{r,include=TRUE}
+tq_index_options()
+```
+
+From the above mentioned indices, We are only interested on S&P 500. 
+
+
+```{r,include=TRUE}
+tbl <- read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies') %>% html_nodes(css = 'table')
+tbl <- tbl[1] %>% html_table() %>% as.data.frame()
+tbl<-tbl[, c(1,2,4,5)]
+colnames(tbl)<-c("Symbol", "Company", "Sector", "Sub_Sector")
+head(tbl)
+```
+
+```{r, include=TRUE}
+SP500 <- tbl
+head(SP500)
+write.csv(SP500, "C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/SP500.csv")
+```
+
+
+
+```{r, include=TRUE}
+stocks<-SP500$Symbol
+stocks[stocks=="BRK.B"]<-"BRK-B"
+stocks[stocks=="BF.B"]<-"BF-B"
+# "BRK.B", "BF.B" this two ticker does not work like that format. so we had to change them. 
+```
+
+```{r, include=TRUE}
+for (s in stocks) {
+url <- paste0("http://finviz.com/quote.ashx?t=", s)
+webpage <- readLines(url)
+html <- htmlTreeParse(webpage, useInternalNodes = TRUE, asText = TRUE)
+tableNodes <- getNodeSet(html, "//table")
+# ASSIGN TO STOCK NAMED DFS
+assign(s, readHTMLTable(tableNodes[[9]],
+header= c("data1", "data2", "data3", "data4", "data5", "data6",
+"data7", "data8", "data9", "data10", "data11", "data12")))
+1
+# ADD COLUMN TO IDENTIFY STOCK
+df <- get(s)
+df['stock'] <- s
+assign(s, df)
+}
+```
+
+
+```{r, include=TRUE}
+# COMBINE ALL STOCK DATA 
+stockdatalist <- cbind(mget(stocks))
+stockdata <- do.call(rbind, stockdatalist)
+```
+
+```{r, include=TRUE}
+# MOVE STOCK ID TO FIRST COLUMN
+stockdata <- stockdata[, c(ncol(stockdata), 1:ncol(stockdata)-1)]
+head(stockdata)
+```
+
+```{r, include=TRUE}
+Part_1<-stockdata[,c("stock","data1","data2")]
+Part_1<-spread(Part_1, "data1","data2")
+head(Part_1)
+```
+
+```{r, include=TRUE}
+Part_2<-stockdata[,c("stock","data3","data4")]
+Part_2<-spread(Part_2, "data3","data4")
+head(Part_2)
+```
+
+```{r, include=TRUE}
+Part_3<-stockdata[,c("stock","data5","data6")]
+Part_3_Part_1<-Part_3%>%
+  filter(!data5 %in% c("EPS next Y")) # We have to exclude this variable because of double entry problem.
+Part_3_Part_1<-spread(Part_3_Part_1, "data5","data6")
+head(Part_3_Part_1)
+```
+
+```{r, include=TRUE}
+Part_4<-stockdata[,c("stock","data7","data8")]
+Part_4<-spread(Part_4, "data7","data8")
+head(Part_4)
+```
+
+
+```{r, include=TRUE}
+Part_5<-stockdata[,c("stock","data9","data10")]
+Part_5<-spread(Part_5, "data9","data10")
+head(Part_5)
+```
+
+```{r, include=TRUE}
+Part_6<-stockdata[,c("stock","data11","data12")]
+Part_6<-spread(Part_6, "data11","data12")
+head(Part_6)
+```
+
+```{r, include=TRUE}
+Data<-Part_1%>%
+  inner_join(Part_2, by = "stock")%>%
+  inner_join(Part_3_Part_1, by = "stock")%>%
+  inner_join(Part_4, by = "stock")%>%
+  inner_join(Part_5, by = "stock")%>%
+  inner_join(Part_6, by = "stock")
+colnames(Data)[1]<-"Ticker"
+write.csv(Data, "C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Stock_Sorting_Data.csv")
+head(Data)
+```
+
+
+```{r, include=TRUE}
+colnames(Data)[27]<-"EPS_ttm"
+EPS_Data<-Data%>%
+  select(Ticker, EPS_ttm, Beta)
+head(EPS_Data)
+```
+
+```{r, include=TRUE}
+EPS_Data$EPS_ttm<-as.numeric(as.character(EPS_Data$EPS_ttm))
+EPS_Data$Beta<-as.numeric(as.character(EPS_Data$Beta))
+head(EPS_Data)
+```
+
+
+```{r, include=TRUE}
+write.csv(EPS_Data, "C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/EPS_Stock_Ranking.csv")
+length(levels(factor(EPS_Data$Ticker)))
+```
