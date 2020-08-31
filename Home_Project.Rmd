@@ -1,0 +1,228 @@
+---
+title: "Stock_Sorting_With_R"
+author: "Md. Shahadat Hossain"
+date: "9/24/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Chepter_1
+
+In this section, We will put the neccessary packages for importing fundamental data from various websites. 
+
+```{r, include=FALSE}
+# Quietly make sure all the required packages are installed
+invisible(lapply(c('quantmod', 'dplyr', 'tidyquant','tidyverse'), function(pkg) {
+  if (system.file(package = pkg) == '')
+    install.packages(pkg)
+}))
+```
+
+```{r,include=FALSE}
+library(quantmod)
+library(dplyr)
+library(tidyquant)
+library(tidyverse)
+```
+
+With the following code we will different indexes available in the market. 
+
+```{r,include=FALSE}
+tq_index_options()
+```
+
+From the above mentioned indices, We are only interested on S&P 500. 
+
+```{r, include=TRUE}
+SP500 <- tq_index("SP500")
+head(SP500)
+```
+
+Lets see how many unique company, ticker and industry they have taken to construct this portfolio. 
+
+```{r, include=TRUE}
+SP500[,c(1,2,4)] %>% 
+    lapply(function(x) x %>% unique() %>% length()) %>%
+    unlist()
+```
+
+We can see that, they have used 505 seperate company with tickers and 11 sector. 
+
+```{r, include=TRUE}
+Indutry_Company<-SP500 %>%
+    # Summarize data by frequency
+    group_by(sector) %>%
+    summarise(Count = n())
+nrow(Indutry_Company)
+```
+So, we can see that they have used 11 industry for the constructing this portfolio.
+
+```{r, include=TRUE}
+# Visualize
+Indutry_Company%>%
+    ggplot(aes(x = sector %>% fct_reorder(count),
+               y = count
+               )) + 
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = count), size = 3, nudge_y = 4, nudge_x = .1) + 
+    scale_y_continuous(limits = c(0,100)) +
+    ggtitle(label = "Sector Frequency Among SP500 Stocks") +
+    xlab(label = "Sector") +
+    theme(plot.title = element_text(size = 16)) + 
+    coord_flip() 
+```
+
+Separating the distribution of securities into industry sectors shows us our options if we were to select stocks using a diversification strategy. It’s important to remember that a risk mitigation technique is to select a basket (or portfolio) of stocks that have low return correlation. Typically, selecting from different industries and sectors helps to reduce this correlation and diversify the portfolio. 
+
+Lets start Stock analysis. For this section, I am going to use all stocks those have been used in SP500 Index
+
+```{r, include=TRUE}
+Stock_Selected<-SP500$symbol
+```
+
+```{r, include=TRUE, warning=FALSE}
+start_date<-"2016-01-01"
+end_date<-"2017-01-01"
+mult_stocks <- tq_get(Stock_Selected,
+                      get  = "stock.prices",
+                      from = start_date,
+                      to   = end_date)
+```
+
+```{r, include=TRUE}
+length(levels(factor(mult_stocks$symbol)))
+```
+
+```{r, include=FALSE}
+#mult_stocks <- mult_stocks %>%
+  #select(date,symbol, Price=adjusted)
+#colnames(mult_stocks) <- c("Date", "Symbol", "Price")
+#head(mult_stocks)
+```
+
+```{r, include=TRUE}
+mult_stocks <- mult_stocks[,c(1,2,8)]
+colnames(mult_stocks) <- c("Symbol", "Date", "Price")
+head(mult_stocks)
+```
+
+```{r, include=TRUE}
+mult_stocks_Spread<-spread(mult_stocks, Symbol, Price)
+head(mult_stocks_Spread)
+```
+
+We need to transform dataset format into xts. This will help us to calculate Returns.
+
+```{r, include=TRUE}
+mult_stocks_Spread.XTS<-xts(mult_stocks_Spread[,-1], order.by = mult_stocks_Spread$Date)
+class(mult_stocks_Spread.XTS)
+```
+
+For calculating returns, we will use PerformanceAnalytics package. 
+
+```{r, include=TRUE}
+# install.packages("PerformanceAnalytics")
+library(PerformanceAnalytics)
+```
+
+```{r, include=TRUE}
+Logarithmic_Returns.XTS<-Return.calculate(mult_stocks_Spread.XTS, method = "log")
+```
+
+
+
+```{r, include=TRUE}
+Logarithmic_Returns.XTS<-Logarithmic_Returns.XTS[-1,]
+```
+
+```{r, include=TRUE}
+head(Logarithmic_Returns.XTS[,1:6])
+```
+
+
+```{r, include=TRUE}
+Mean_Returns<-as.data.frame(lapply(Logarithmic_Returns.XTS,FUN = mean))
+```
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Mean_Returns<-gather(Mean_Returns)
+colnames(Mean_Returns)<-c("Ticker", "Mean_Return")
+head(Mean_Returns)
+```
+
+
+
+```{r, include=TRUE}
+Return_Variance<-as.data.frame(lapply(Logarithmic_Returns.XTS,FUN = var))
+```
+
+```{r, include=TRUE}
+Return_Variance<-gather(Return_Variance)
+colnames(Return_Variance)<-c("Ticker", "Return_Variance")
+head(Return_Variance)
+```
+
+
+
+```{r, include=TRUE}
+Retrun_Statistics<-Mean_Returns%>%
+  inner_join(Return_Variance, by = 'Ticker')
+head(Retrun_Statistics)
+```
+
+```{r, include=TRUE}
+Return_Standard_Deviation<-as.data.frame(lapply(Logarithmic_Returns.XTS,FUN = sd))
+```
+
+
+```{r, include=TRUE}
+Return_Standard_Deviation<-gather(Return_Standard_Deviation)
+colnames(Return_Standard_Deviation)<-c("Ticker", "Return_Standard_Deviation")
+head(Return_Standard_Deviation)
+```
+
+```{r, include=TRUE}
+Retrun_Statistics<-Retrun_Statistics%>%
+  inner_join(Return_Standard_Deviation, by = 'Ticker')
+head(Retrun_Statistics)
+```
+
+
+
+```{r, include=TRUE}
+plot(Retrun_Statistics$Return_Standard_Deviation,Retrun_Statistics$Mean_Return, type = "p")
+```
+
+```{r, include=TRUE}
+plot(Retrun_Statistics$Return_Variance,Retrun_Statistics$Mean_Return, type = "p")
+```
+
+
+
+```{r, include=TRUE}
+Cumulative_Logarithmic_Returns.XTS<-cumsum(Logarithmic_Returns.XTS)
+plot(Cumulative_Logarithmic_Returns.XTS)
+```
+
+```{r, include=TRUE}
+N<-ncol(Logarithmic_Returns.XTS)
+# Create the weights
+eq_weights<-c(rep(1/N,N))
+sum(eq_weights)
+```
+
+Creating a portfolio using the buy and hold strategy using Return.portfolio() . Note, you do not need to specify a rebalance period . Call this Port_Logarithmic_Return_BH .
+
+```{r, include=TRUE}
+# Create a portfolio using buy and hold
+Port_Logarithmic_Return_BH<-Return.portfolio(R = Logarithmic_Returns.XTS, weights = eq_weights )
+```
+
+```{r, include=TRUE}
+sapply(Logarithmic_Returns.XTS,function(x)sum(is.na (x)))
+```
