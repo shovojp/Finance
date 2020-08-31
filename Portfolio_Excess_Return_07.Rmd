@@ -1,0 +1,197 @@
+---
+title: "Portfolio_Excess_Return_07"
+author: "Md. Shahadat Hossain"
+date: "2 October 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# Quietly make sure all the required packages are installed
+invisible(lapply(c('quantmod', 'dplyr', 'tidyquant','tidyverse', 'XML', 'knitr'), function(pkg) {
+  if (system.file(package = pkg) == '')
+    install.packages(pkg)
+}))
+```
+
+```{r,include=TRUE, warning=FALSE, message=FALSE}
+library(quantmod)
+library(dplyr)
+library(tidyquant)
+library(tidyverse)
+library(XML)
+library(knitr)
+```
+
+
+
+```{r, include=TRUE}
+Famma_French<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Famma_French.CSV")
+Famma_French<-Famma_French[,-1]
+Famma_French$Date<-as.Date(Famma_French$Date)
+head(Famma_French)
+```
+
+
+# Buy and Hold Portfolio Excess Return Statistics
+
+```{r, include=TRUE}
+buy_hold_portfolios<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/buy_hold_portfolios.csv")
+buy_hold_portfolios<-buy_hold_portfolios[,-1]
+buy_hold_portfolios$Date<-as.Date(buy_hold_portfolios$Date)
+buy_hold_portfolios.XTS<-xts(buy_hold_portfolios[,-1], order.by = buy_hold_portfolios$Date)
+head(buy_hold_portfolios.XTS)
+```
+
+```{r, include=TRUE}
+Buy_Hold_Portfolios_Returns.DF<-data.frame(Date=index(buy_hold_portfolios.XTS), coredata(buy_hold_portfolios.XTS))
+Buy_Hold_Portfolios_Returns.Long<-Buy_Hold_Portfolios_Returns.DF%>%gather(Protfolios,Protfolio_Return,Defensive_buy_hold_portfolio_Return:Aggressive_buy_hold_portfolio_Return)
+head(Buy_Hold_Portfolios_Returns.Long)
+```
+
+
+```{r, include=TRUE}
+Buy_Hold_Portfolios_Returns.Long.DF<-Buy_Hold_Portfolios_Returns.Long%>%
+  inner_join(Famma_French, by = "Date")
+head(Buy_Hold_Portfolios_Returns.Long.DF)
+```
+
+
+```{r, include=TRUE}
+Buy_Hold_Portfolios_Excess_Return.DF<-Buy_Hold_Portfolios_Returns.Long.DF%>%
+  mutate(Protfolio_Excess_Return=Protfolio_Return-Risk_Free)%>%
+  select(Date, Protfolios, Protfolio_Excess_Return)
+head(Buy_Hold_Portfolios_Excess_Return.DF)
+```
+
+```{r, include=TRUE}
+Buy_Hold_Portfolios_Excess_Return_Wide.DF<-spread(Buy_Hold_Portfolios_Excess_Return.DF, Protfolios, Protfolio_Excess_Return)
+head(Buy_Hold_Portfolios_Excess_Return_Wide.DF)
+```
+
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Buy_Hold_Portfolios_Mean_Excess_Returns<-as.data.frame(lapply(Buy_Hold_Portfolios_Excess_Return_Wide.DF[,-1],FUN = mean))
+Buy_Hold_Portfolios_Mean_Excess_Returns<-gather(Buy_Hold_Portfolios_Mean_Excess_Returns)
+colnames(Buy_Hold_Portfolios_Mean_Excess_Returns)<-c("Portfolios", "Mean_Excess_Returns")
+head(Buy_Hold_Portfolios_Mean_Excess_Returns)
+```
+
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Buy_Hold_Portfolios_Excess_Return_Variance<-as.data.frame(lapply(Buy_Hold_Portfolios_Excess_Return_Wide.DF[,-1],FUN = var))
+Buy_Hold_Portfolios_Excess_Return_Variance<-gather(Buy_Hold_Portfolios_Excess_Return_Variance)
+colnames(Buy_Hold_Portfolios_Excess_Return_Variance)<-c("Portfolios", "Excess_Return_Variance")
+head(Buy_Hold_Portfolios_Excess_Return_Variance)
+```
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Buy_Hold_Portfolios_Excess_Return_Standard_Deviation<-as.data.frame(lapply(Buy_Hold_Portfolios_Excess_Return_Wide.DF[,-1],FUN = sd))
+Buy_Hold_Portfolios_Excess_Return_Standard_Deviation<-gather(Buy_Hold_Portfolios_Excess_Return_Standard_Deviation)
+colnames(Buy_Hold_Portfolios_Excess_Return_Standard_Deviation)<-c("Portfolios", "Excess_Return_Standard_Deviation")
+head(Buy_Hold_Portfolios_Excess_Return_Standard_Deviation)
+```
+
+
+```{r, include=TRUE}
+Buy_Hold_Portfolios_Excess_Return_Statistics<-Buy_Hold_Portfolios_Mean_Excess_Returns%>%
+  inner_join(Buy_Hold_Portfolios_Excess_Return_Variance, by="Portfolios")%>%
+  inner_join(Buy_Hold_Portfolios_Excess_Return_Standard_Deviation, by="Portfolios")
+Buy_Hold_Portfolios_Excess_Return_Statistics
+```
+
+
+
+# Weekly Rebalance Portfolio Excess Return Statistics
+
+```{r, include=TRUE}
+weekly_rebalance_portfolios<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/weekly_rebalance_portfolios.csv")
+weekly_rebalance_portfolios<-weekly_rebalance_portfolios[,-1]
+weekly_rebalance_portfolios$Date<-as.Date(weekly_rebalance_portfolios$Date)
+weekly_rebalance_portfolios.XTS<-xts(weekly_rebalance_portfolios[,-1], order.by = weekly_rebalance_portfolios$Date)
+head(weekly_rebalance_portfolios.XTS)
+```
+
+```{r, include=TRUE}
+Weekly_Rebalance_Portfolios_Returns.DF<-data.frame(Date=index(weekly_rebalance_portfolios.XTS), coredata(weekly_rebalance_portfolios.XTS))
+Weekly_Rebalance_Portfolios_Returns.Long<-Weekly_Rebalance_Portfolios_Returns.DF%>%gather(Protfolios,Protfolio_Return,Defensive_Portfolio_weekly_rebalance_portfolio_Return:Aggressive_Portfolio_weekly_rebalance_portfolio_Return)
+head(Weekly_Rebalance_Portfolios_Returns.Long)
+```
+
+
+```{r, include=TRUE}
+Weekly_Rebalance_Portfolios_Returns.Long.DF<-Weekly_Rebalance_Portfolios_Returns.Long%>%
+  inner_join(Famma_French, by = "Date")
+head(Weekly_Rebalance_Portfolios_Returns.Long.DF)
+```
+
+
+```{r, include=TRUE}
+Weekly_Rebalance_Portfolios_Excess_Return.DF<-Weekly_Rebalance_Portfolios_Returns.Long.DF%>%
+  mutate(Protfolio_Excess_Return=Protfolio_Return-Risk_Free)%>%
+  select(Date, Protfolios, Protfolio_Excess_Return)
+head(Weekly_Rebalance_Portfolios_Excess_Return.DF)
+```
+
+```{r, include=TRUE}
+Weekly_Rebalance_Portfolios_Excess_Return_Wide.DF<-spread(Weekly_Rebalance_Portfolios_Excess_Return.DF, Protfolios, Protfolio_Excess_Return)
+head(Weekly_Rebalance_Portfolios_Excess_Return_Wide.DF)
+```
+
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Weekly_Rebalance_Portfolios_Mean_Excess_Returns<-as.data.frame(lapply(Weekly_Rebalance_Portfolios_Excess_Return_Wide.DF[,-1],FUN = mean))
+Weekly_Rebalance_Portfolios_Mean_Excess_Returns<-gather(Weekly_Rebalance_Portfolios_Mean_Excess_Returns)
+colnames(Weekly_Rebalance_Portfolios_Mean_Excess_Returns)<-c("Portfolios", "Mean_Excess_Returns")
+head(Weekly_Rebalance_Portfolios_Mean_Excess_Returns)
+```
+
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Weekly_Rebalance_Portfolios_Excess_Return_Variance<-as.data.frame(lapply(Weekly_Rebalance_Portfolios_Excess_Return_Wide.DF[,-1],FUN = var))
+Weekly_Rebalance_Portfolios_Excess_Return_Variance<-gather(Weekly_Rebalance_Portfolios_Excess_Return_Variance)
+colnames(Weekly_Rebalance_Portfolios_Excess_Return_Variance)<-c("Portfolios", "Excess_Return_Variance")
+head(Weekly_Rebalance_Portfolios_Excess_Return_Variance)
+```
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Weekly_Rebalance_Portfolios_Excess_Return_Standard_Deviation<-as.data.frame(lapply(Weekly_Rebalance_Portfolios_Excess_Return_Wide.DF[,-1],FUN = sd))
+Weekly_Rebalance_Portfolios_Excess_Return_Standard_Deviation<-gather(Weekly_Rebalance_Portfolios_Excess_Return_Standard_Deviation)
+colnames(Weekly_Rebalance_Portfolios_Excess_Return_Standard_Deviation)<-c("Portfolios", "Excess_Return_Standard_Deviation")
+head(Weekly_Rebalance_Portfolios_Excess_Return_Standard_Deviation)
+```
+
+
+```{r, include=TRUE}
+Weekly_Rebalance_Portfolios_Excess_Return_Statistics<-Weekly_Rebalance_Portfolios_Mean_Excess_Returns%>%
+  inner_join(Weekly_Rebalance_Portfolios_Excess_Return_Variance, by="Portfolios")%>%
+  inner_join(Weekly_Rebalance_Portfolios_Excess_Return_Standard_Deviation, by="Portfolios")
+Weekly_Rebalance_Portfolios_Excess_Return_Statistics
+```
+
+```{r, include=TRUE}
+Portfolios_Excess_Return_Statistics<-rbind(Buy_Hold_Portfolios_Excess_Return_Statistics, Weekly_Rebalance_Portfolios_Excess_Return_Statistics)
+Portfolios_Excess_Return_Statistics
+name<-names(Portfolios_Excess_Return_Statistics[,-1])
+colnames(Portfolios_Excess_Return_Statistics)<-c("Portfolio", name)
+Portfolios_Excess_Return_Statistics
+```
+
+```{r, include=TRUE}
+names<-names(Portfolio_Return_Statistics)
+Portfolio_Return_Statistics<-Portfolio_Return_Statistics%>%
+  inner_join(Portfolios_Excess_Return_Statistics, by = "Portfolio")%>%
+  select(Portfolio, Mean_Return, Mean_Excess_Returns, Return_Standard_Deviation)
+Portfolio_Return_Statistics
+```

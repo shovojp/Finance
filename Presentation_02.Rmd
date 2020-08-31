@@ -1,0 +1,309 @@
+---
+titlD: "Presentation_02"
+author: "Md. Shahadat Hossain"
+date: "2 October 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# Quietly make sure all the required packages are installed
+invisible(lapply(c('quantmod', 'dplyr', 'tidyquant','tidyverse', 'XML', "rvest", "TTR"), function(pkg) {
+  if (system.file(package = pkg) == '')
+    install.packages(pkg)
+}))
+```
+
+```{r,include=TRUE, warning=FALSE, message=FALSE}
+library(quantmod)
+library(dplyr)
+library(tidyquant)
+library(tidyverse)
+library(XML)
+library(rvest)
+library(TTR)
+```
+
+From the above mentioned indices, We are only interested on S&P 500. 
+
+```{r, include=TRUE}
+SP500 <-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/SP500.csv")
+SP500<-SP500[,-1]
+head(SP500)
+```
+
+```{r, include=TRUE}
+SP500<-SP500%>%
+  select(Ticker=Symbol, Company=Company)
+SP500$Ticker<-as.character(SP500$Ticker)
+head(SP500)
+```
+
+```{r, include=TRUE}
+EPS_Stock_Ranking<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/EPS_Stock_Ranking.csv")
+EPS_Stock_Ranking<-as.tibble(EPS_Stock_Ranking[,-1])
+EPS_Stock_Ranking$Ticker<-as.character(EPS_Stock_Ranking$Ticker)
+head(EPS_Stock_Ranking)
+levels(factor(EPS_Stock_Ranking$Portfolio))
+```
+
+```{r, include=TRUE}
+Stock_Selected<-SP500%>%
+  inner_join(EPS_Stock_Ranking, by = "Ticker")
+head(Stock_Selected)
+write.csv(Stock_Selected, "C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Stock_Selected.csv")
+```
+
+```{r, include=TRUE}
+Stocks_with_missing_beta<-which(is.na(Stock_Selected$Beta))
+Stocks_with_missing_beta<-Stock_Selected[Stocks_with_missing_beta, ]
+Stocks_with_missing_beta
+```
+
+
+
+```{r, include=TRUE}
+Ticker<-c("GOOG", "AMCR", "CBOE", "CTVA", "DISCK", "DOW", "DD", "FOXA", "FOX", "LW", "LIN", "NWS", "FTI", "UA")
+Beta_M<-c(0.94, 0.27, -0.02, NA, 1.38, NA, 1.24, NA, NA, 0.18, 0.48, 1.15, 1.66, 1.09)
+Stocks_with_missing_beta_Fill<-as.data.frame(cbind(Ticker, Beta_M))
+Stocks_with_missing_beta_Fill$Beta_M<-as.numeric(as.character(Stocks_with_missing_beta_Fill$Beta_M))
+Stocks_with_missing_beta_Fill$Ticker<-as.character(Stocks_with_missing_beta_Fill$Ticker)
+Stocks_with_missing_beta_Fill
+```
+
+
+```{r, include=TRUE}
+Stocks_with_missing_beta<-Stocks_with_missing_beta%>%
+  inner_join(Stocks_with_missing_beta_Fill, by="Ticker")%>%
+  select(Ticker, Company, EPS_ttm, Beta_M)%>%
+  mutate(Beta = Beta_M)%>%
+  select(Ticker, Company, EPS_ttm, Beta)
+Stocks_with_missing_beta
+```
+
+```{r, include=TRUE}
+Stock_Selected<-na.omit(Stock_Selected)
+Stock_Selected<-rbind(Stock_Selected, Stocks_with_missing_beta)
+tail(Stock_Selected)
+write.csv(Stock_Selected, "C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Stock_Selected.csv")
+```
+
+```{r, include=TRUE}
+# Beta Distribution of S&P 500
+x <- na.omit(Stock_Selected$Beta)
+h<-hist(x, breaks=50, col="green", xlab="Beta",
+        main="Beta Distribution of S&P 500 with Normal Curve")
+xfit<-seq(min(x),max(x),length=40)
+yfit<-dnorm(xfit,mean=mean(x),sd=sd(x))
+yfit <- yfit*diff(h$mids[1:2])*length(x)
+lines(xfit, yfit, col="blue", lwd=3)
+```
+
+
+```{r, include=TRUE}
+Aggressive_Portfolio<-top_n(Stock_Selected, 20, Beta) 
+Aggressive_Portfolio
+```
+
+
+```{r, include=TRUE}
+Stock_Selected_Ticker<-Aggressive_Portfolio$Ticker
+```
+
+```{r, include=TRUE, warning=FALSE}
+start_date<-"2014-08-31"
+end_date<-"2019-08-31"
+mult_stocks <- tq_get(Stock_Selected_Ticker,
+                      get  = "stock.prices",
+                      from = start_date,
+                      to   = end_date)
+```
+
+```{r, include=TRUE}
+length(levels(factor(mult_stocks$symbol)))
+```
+
+
+```{r, include=TRUE}
+mult_stocks <- mult_stocks[,c(1,2,8)]
+colnames(mult_stocks) <- c("Ticker", "Date", "Price")
+head(mult_stocks)
+```
+
+```{r, include=TRUE}
+mult_stocks_Spread<-spread(mult_stocks, Ticker, Price)
+head(mult_stocks_Spread)
+```
+
+We have three stocks which have missing value. We want to exclude those stocks from 
+
+```{r, include=TRUE}
+# Finding those columns which have missing values
+Missing_Values<-as.data.frame(sapply(mult_stocks_Spread[,-1], function(x) sum(is.na(x))))
+colnames(Missing_Values)<-c( "No_Missing_Values")
+# Now we need to convert row names into a column called Tickers
+Missing_Values <- data.frame(Tickers = row.names(Missing_Values), Missing_Values)
+# Getting ride of row names
+rownames(Missing_Values) <- c()
+# Now Checking which Rows have missing value.
+which(Missing_Values$No_Missing_Values>0)
+# Lets see which tickers have missing value.
+# Missing_Values[c(195, 292, 446),]
+Missing_Values[which(Missing_Values$No_Missing_Values>0),]
+```
+
+Now We want to exclude this three stocks from our stock returns.
+
+```{r, include=TRUE}
+# Picking those tickers which we want to exclude from out return dataset. 
+drops <- Missing_Values[which(Missing_Values$No_Missing_Values>0),]$Tickers
+mult_stocks_Spread<-mult_stocks_Spread[ , !(names(mult_stocks_Spread) %in% drops)]
+```
+
+We need to transform dataset format into xts. This will help us to calculate Returns.
+
+```{r, include=TRUE}
+mult_stocks_Spread.XTS<-xts(mult_stocks_Spread[,-1], order.by = mult_stocks_Spread$Date)
+class(mult_stocks_Spread.XTS)
+```
+
+For calculating returns, we will use PerformanceAnalytics package. 
+
+```{r, include=TRUE}
+# install.packages("PerformanceAnalytics")
+library(PerformanceAnalytics)
+```
+
+```{r, include=TRUE}
+Logarithmic_Returns.XTS<-Return.calculate(mult_stocks_Spread.XTS, method = "log")
+head(Logarithmic_Returns.XTS[,1:6])
+```
+
+
+
+```{r, include=TRUE}
+tail(Logarithmic_Returns.XTS[,1:6])
+```
+
+```{r, include=TRUE}
+Logarithmic_Returns.XTS<-Logarithmic_Returns.XTS[-1,]
+head(Logarithmic_Returns.XTS[,1:6])
+```
+
+
+```{r, include=TRUE}
+Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF<-data.frame(Date=index(Logarithmic_Returns.XTS), coredata(Logarithmic_Returns.XTS))
+head(Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF[,1:6])
+```
+
+```{r, include=TRUE}
+write.csv(Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF,"C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Aggressive_Portfolio_Stocks_Logarithmic_Returns.csv")
+```
+
+```{r, include=TRUE}
+Defensive_Portfolio<-Stock_Selected %>%
+  filter(!is.na(Beta))%>%
+  arrange(desc(Beta)) %>%
+  slice((nrow(Stock_Selected)-23):nrow(Stock_Selected)) 
+Defensive_Portfolio
+```
+
+
+```{r, include=TRUE}
+Stock_Selected_Ticker<-Defensive_Portfolio$Ticker
+```
+
+```{r, include=TRUE, warning=FALSE}
+start_date<-"2014-08-31"
+end_date<-"2019-08-31"
+mult_stocks <- tq_get(Stock_Selected_Ticker,
+                      get  = "stock.prices",
+                      from = start_date,
+                      to   = end_date)
+```
+
+```{r, include=TRUE}
+length(levels(factor(mult_stocks$symbol)))
+```
+
+
+```{r, include=TRUE}
+mult_stocks <- mult_stocks[,c(1,2,8)]
+colnames(mult_stocks) <- c("Ticker", "Date", "Price")
+head(mult_stocks)
+```
+
+```{r, include=TRUE}
+mult_stocks_Spread<-spread(mult_stocks, Ticker, Price)
+head(mult_stocks_Spread)
+```
+
+We have three stocks which have missing value. We want to exclude those stocks from 
+
+```{r, include=TRUE}
+# Finding those columns which have missing values
+Missing_Values<-as.data.frame(sapply(mult_stocks_Spread[,-1], function(x) sum(is.na(x))))
+colnames(Missing_Values)<-c( "No_Missing_Values")
+# Now we need to convert row names into a column called Tickers
+Missing_Values <- data.frame(Tickers = row.names(Missing_Values), Missing_Values)
+# Getting ride of row names
+rownames(Missing_Values) <- c()
+# Now Checking which Rows have missing value.
+which(Missing_Values$No_Missing_Values>0)
+# Lets see which tickers have missing value.
+# Missing_Values[c(195, 292, 446),]
+Missing_Values[which(Missing_Values$No_Missing_Values>0),]
+```
+
+Now We want to exclude this three stocks from our stock returns.
+
+```{r, include=TRUE}
+# Picking those tickers which we want to exclude from out return dataset. 
+drops <- Missing_Values[which(Missing_Values$No_Missing_Values>0),]$Tickers
+mult_stocks_Spread<-mult_stocks_Spread[ , !(names(mult_stocks_Spread) %in% drops)]
+```
+
+We need to transform dataset format into xts. This will help us to calculate Returns.
+
+```{r, include=TRUE}
+mult_stocks_Spread.XTS<-xts(mult_stocks_Spread[,-1], order.by = mult_stocks_Spread$Date)
+class(mult_stocks_Spread.XTS)
+```
+
+For calculating returns, we will use PerformanceAnalytics package. 
+
+```{r, include=TRUE}
+# install.packages("PerformanceAnalytics")
+library(PerformanceAnalytics)
+```
+
+```{r, include=TRUE}
+Logarithmic_Returns.XTS<-Return.calculate(mult_stocks_Spread.XTS, method = "log")
+head(Logarithmic_Returns.XTS[,1:6])
+```
+
+
+
+```{r, include=TRUE}
+tail(Logarithmic_Returns.XTS[,1:6])
+```
+
+```{r, include=TRUE}
+Logarithmic_Returns.XTS<-Logarithmic_Returns.XTS[-1,]
+head(Logarithmic_Returns.XTS[,1:6])
+```
+
+
+```{r, include=TRUE}
+Defensive_Portfolio_Stocks_Logarithmic_Returns.DF<-data.frame(Date=index(Logarithmic_Returns.XTS), coredata(Logarithmic_Returns.XTS))
+head(Defensive_Portfolio_Stocks_Logarithmic_Returns.DF[,1:6])
+```
+
+```{r, include=TRUE}
+write.csv(Defensive_Portfolio_Stocks_Logarithmic_Returns.DF,"C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Defensive_Portfolio_Stocks_Logarithmic_Returns.csv")
+```

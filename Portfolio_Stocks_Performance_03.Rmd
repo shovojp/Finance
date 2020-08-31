@@ -1,0 +1,208 @@
+---
+title: "Portfolio_Stocks_Performance_03"
+author: "Md. Shahadat Hossain"
+date: "2 October 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# Quietly make sure all the required packages are installed
+invisible(lapply(c('quantmod', 'dplyr', 'tidyquant','tidyverse', 'XML'), function(pkg) {
+  if (system.file(package = pkg) == '')
+    install.packages(pkg)
+}))
+```
+
+```{r,include=TRUE, warning=FALSE, message=FALSE}
+library(quantmod)
+library(dplyr)
+library(tidyquant)
+library(tidyverse)
+library(XML)
+```
+
+```{r, include=TRUE}
+Defensive_Portfolio_Stocks_Logarithmic_Returns<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Defensive_Portfolio_Stocks_Logarithmic_Returns.csv")
+Defensive_Portfolio_Stocks_Logarithmic_Returns<-Defensive_Portfolio_Stocks_Logarithmic_Returns[,-1]
+Defensive_Portfolio_Stocks_Logarithmic_Returns$Date<-as.Date(Defensive_Portfolio_Stocks_Logarithmic_Returns$Date)
+Defensive_Portfolio_Stocks_Logarithmic_Returns.XTS<-xts(Defensive_Portfolio_Stocks_Logarithmic_Returns[,-1], order.by =Defensive_Portfolio_Stocks_Logarithmic_Returns$Date)
+head(Defensive_Portfolio_Stocks_Logarithmic_Returns.XTS[,1:6])
+```
+
+```{r, include=TRUE}
+Mean_Returns<-as.data.frame(lapply(Defensive_Portfolio_Stocks_Logarithmic_Returns.XTS,FUN = mean))
+```
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Mean_Returns<-gather(Mean_Returns)
+colnames(Mean_Returns)<-c("Ticker", "Mean_Return")
+head(Mean_Returns)
+```
+
+
+
+```{r, include=TRUE}
+Return_Variance<-as.data.frame(lapply(Defensive_Portfolio_Stocks_Logarithmic_Returns.XTS,FUN = var))
+```
+
+```{r, include=TRUE}
+Return_Variance<-gather(Return_Variance)
+colnames(Return_Variance)<-c("Ticker", "Return_Variance")
+head(Return_Variance)
+```
+
+
+
+```{r, include=TRUE}
+Retrun_Statistics<-Mean_Returns%>%
+  inner_join(Return_Variance, by = 'Ticker')
+head(Retrun_Statistics)
+```
+
+```{r, include=TRUE}
+Return_Standard_Deviation<-as.data.frame(lapply(Defensive_Portfolio_Stocks_Logarithmic_Returns.XTS,FUN = sd))
+```
+
+
+```{r, include=TRUE}
+Return_Standard_Deviation<-gather(Return_Standard_Deviation)
+colnames(Return_Standard_Deviation)<-c("Ticker", "Return_Standard_Deviation")
+head(Return_Standard_Deviation)
+```
+
+```{r, include=TRUE}
+Retrun_Statistics<-Retrun_Statistics%>%
+  inner_join(Return_Standard_Deviation, by = 'Ticker')
+head(Retrun_Statistics)
+```
+
+
+
+```{r, include=TRUE}
+plot(Retrun_Statistics$Return_Standard_Deviation,Retrun_Statistics$Mean_Return, main = "Logarithmic Mean Return Vs Standard Deviation", xlab = "Standard Deviation", ylab = "Mean Returns", type = "p", col="red")
+```
+
+```{r, include=TRUE}
+plot(Retrun_Statistics$Return_Variance,Retrun_Statistics$Mean_Return, main = "Logarithmic Return Vs Return Variance", xlab = "Return Variance", ylab = "Mean Returns",type = "p")
+```
+
+
+
+```{r, include=TRUE}
+Defensive_Portfolio_Stocks_Cumulative_Logarithmic_Returns.XTS<-cumsum(Defensive_Portfolio_Stocks_Logarithmic_Returns.XTS)
+plot(Defensive_Portfolio_Stocks_Cumulative_Logarithmic_Returns.XTS, main = "Defensive Stock's Cumulative Return", legend.loc = "topleft")
+```
+
+
+
+```{r, include=TRUE}
+par(mfrow=c(2,2))
+# Defensive stocks Mean_Return Distribution
+hist(Retrun_Statistics$Mean_Return, freq=FALSE, xlab = "Mean Returns", ylab = "Density", main = "Mean Return Distribution for Defensive Stocks")
+lines(density(Retrun_Statistics$Mean_Return),col = "red")
+# Defensive stocks Return_Variance Distribution
+hist(Retrun_Statistics$Return_Variance, freq=FALSE, xlab = "Return Variance", ylab = "Density", main = "Return Variance Distribution for Defensive Stocks")
+lines(density(Retrun_Statistics$Return_Variance),col = "red")
+# Defensive stocks Return_Standard_Deviation Distribution
+hist(Retrun_Statistics$Return_Standard_Deviation, freq=FALSE, xlab = "Return Standard Deviation", ylab = "Density", main = "Return Standard Deviation Distribution for Defensive Stocks")
+lines(density(Retrun_Statistics$Return_Standard_Deviation),col = "red")
+```
+
+
+```{r, include=TRUE}
+Aggressive_Portfolio_Stocks_Logarithmic_Returns<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Aggressive_Portfolio_Stocks_Logarithmic_Returns.csv")
+Aggressive_Portfolio_Stocks_Logarithmic_Returns<-Aggressive_Portfolio_Stocks_Logarithmic_Returns[,-1]
+Aggressive_Portfolio_Stocks_Logarithmic_Returns$Date<-as.Date(Aggressive_Portfolio_Stocks_Logarithmic_Returns$Date)
+Aggressive_Portfolio_Stocks_Logarithmic_Returns.XTS<-xts(Aggressive_Portfolio_Stocks_Logarithmic_Returns[,-1], order.by =Aggressive_Portfolio_Stocks_Logarithmic_Returns$Date)
+head(Aggressive_Portfolio_Stocks_Logarithmic_Returns.XTS[,1:6])
+```
+
+```{r, include=TRUE}
+Mean_Returns<-as.data.frame(lapply(Aggressive_Portfolio_Stocks_Logarithmic_Returns.XTS,FUN = mean))
+```
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Mean_Returns<-gather(Mean_Returns)
+colnames(Mean_Returns)<-c("Ticker", "Mean_Return")
+head(Mean_Returns)
+```
+
+
+
+```{r, include=TRUE}
+Return_Variance<-as.data.frame(lapply(Aggressive_Portfolio_Stocks_Logarithmic_Returns.XTS,FUN = var))
+```
+
+```{r, include=TRUE}
+Return_Variance<-gather(Return_Variance)
+colnames(Return_Variance)<-c("Ticker", "Return_Variance")
+head(Return_Variance)
+```
+
+
+
+```{r, include=TRUE}
+Retrun_Statistics<-Mean_Returns%>%
+  inner_join(Return_Variance, by = 'Ticker')
+head(Retrun_Statistics)
+```
+
+```{r, include=TRUE}
+Return_Standard_Deviation<-as.data.frame(lapply(Aggressive_Portfolio_Stocks_Logarithmic_Returns.XTS,FUN = sd))
+```
+
+
+```{r, include=TRUE}
+Return_Standard_Deviation<-gather(Return_Standard_Deviation)
+colnames(Return_Standard_Deviation)<-c("Ticker", "Return_Standard_Deviation")
+head(Return_Standard_Deviation)
+```
+
+```{r, include=TRUE}
+Retrun_Statistics<-Retrun_Statistics%>%
+  inner_join(Return_Standard_Deviation, by = 'Ticker')
+head(Retrun_Statistics)
+```
+
+
+
+```{r, include=TRUE}
+plot(Retrun_Statistics$Return_Standard_Deviation,Retrun_Statistics$Mean_Return, main = "Logarithmic Return Vs Standard Deviation", xlab = "Standard Deviation", ylab = "Mean Returns", type = "p")
+```
+
+```{r, include=TRUE}
+plot(Retrun_Statistics$Return_Variance,Retrun_Statistics$Mean_Return, main = "Logarithmic Return Vs Return Variance", xlab = "Return Variance", ylab = "Mean Returns",type = "p")
+```
+
+
+
+```{r, include=TRUE}
+Aggressive_Portfolio_Stocks_Cumulative_Logarithmic_Returns.XTS<-cumsum(Aggressive_Portfolio_Stocks_Logarithmic_Returns.XTS)
+plot(Aggressive_Portfolio_Stocks_Cumulative_Logarithmic_Returns.XTS, main = "Aggressive Stock's Cumulative Return", legend.loc = "topleft")
+```
+
+
+
+```{r, include=TRUE}
+par(mfrow=c(2,2))
+# Aggressive stocks Mean_Return Distribution
+hist(Retrun_Statistics$Mean_Return, freq=FALSE, xlab = "Mean Returns", ylab = "Density", main = "Mean Return Distribution for Aggressive Stocks")
+lines(density(Retrun_Statistics$Mean_Return),col = "red")
+# Aggressive stocks Return_Variance Distribution
+hist(Retrun_Statistics$Return_Variance, freq=FALSE, xlab = "Return Variance", ylab = "Density", main = "Return Variance Distribution for Aggressive Stocks")
+lines(density(Retrun_Statistics$Return_Variance),col = "red")
+# Aggressive stocks Return_Standard_Deviation Distribution
+hist(Retrun_Statistics$Return_Standard_Deviation, freq=FALSE, xlab = "Return Standard Deviation", ylab = "Density", main = "Return Standard Deviation Distribution for Aggressive Stocks")
+lines(density(Retrun_Statistics$Return_Standard_Deviation),col = "red")
+```
+
+
+

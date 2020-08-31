@@ -1,0 +1,211 @@
+---
+title: "Portfolio_Returns_05"
+author: "Md. Shahadat Hossain"
+date: "2 October 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# Quietly make sure all the required packages are installed
+invisible(lapply(c('quantmod', 'dplyr', 'tidyquant','tidyverse', 'XML'), function(pkg) {
+  if (system.file(package = pkg) == '')
+    install.packages(pkg)
+}))
+```
+
+```{r,include=TRUE, warning=FALSE, message=FALSE}
+library(quantmod)
+library(dplyr)
+library(tidyquant)
+library(tidyverse)
+library(XML)
+```
+
+```{r, include=TRUE}
+Defensive_Portfolio_Stocks_Logarithmic_Returns.Long.DF<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Defensive_Portfolio_Stocks_Logarithmic_Returns.Long.CSV")
+Defensive_Portfolio_Stocks_Logarithmic_Returns.Long.DF<-Defensive_Portfolio_Stocks_Logarithmic_Returns.Long.DF[,-1]
+Defensive_Portfolio_Stocks_Logarithmic_Returns.Long.DF$Date<-as.Date(Defensive_Portfolio_Stocks_Logarithmic_Returns.Long.DF$Date)
+head(Defensive_Portfolio_Stocks_Logarithmic_Returns.Long.DF)
+```
+
+
+```{r,include=FALSE}
+Defensive_Portfolio<-Defensive_Portfolio_Stocks_Logarithmic_Returns.Long.DF%>%
+  select(Date, Ticker, Logarithmic_Return, Risk_Free)
+Defensive_Portfolio_Wide<-spread(Defensive_Portfolio[,-4], Ticker, Logarithmic_Return)
+Defensive_Portfolio_Wide.XTS<-xts(Defensive_Portfolio_Wide[,-1], order.by = Defensive_Portfolio_Wide$Date)
+head(Defensive_Portfolio_Wide.XTS[,1:7])
+```
+
+
+```{r,include=FALSE}
+N<-ncol(Defensive_Portfolio_Wide.XTS)
+# Create the weights
+eq_weights<-c(rep(1/N,N))
+sum(eq_weights)
+```
+
+Creating a portfolio using the buy and hold strategy using Return.portfolio() . Note, we do not need to specify a rebalance period . Call this buy_hold_portfolio.
+
+```{r,include=FALSE}
+# Create a portfolio using buy and hold
+Defensive_buy_hold_portfolio<- Return.portfolio(R = Defensive_Portfolio_Wide.XTS, weights = eq_weights )
+head(Defensive_buy_hold_portfolio, 10)
+```
+
+Creating a portfolio where I will rebalance my weights weekly . Using Return.portfolio() with the argument rebalance_on = "weeks". Call this weekly_rebalance_portfolio.
+
+```{r,include=FALSE}
+# Create a portfolio rebalancing daily 
+Defensive_weekly_rebalance_portfolio<-Return.portfolio(R = Defensive_Portfolio_Wide.XTS, weights = eq_weights, rebalance_on = "weeks" )
+head(Defensive_weekly_rebalance_portfolio, 10)
+```
+
+In this section we will see the difference between buy_hold_portfolio and weekly_rebalance_portfolio return. 
+
+```{r,include=FALSE}
+# Plot the time-series
+par(mfrow = c(2, 1), mar = c(2, 4, 2, 2))
+plot.zoo(Defensive_buy_hold_portfolio, col = "red", ylab  = "Defensive And Passive", main = "Defensive Portfolio Return")
+plot.zoo(Defensive_weekly_rebalance_portfolio, col = "blue", ylab  = "Defensive And Active")
+```
+
+Now I will explore the functionality of the Return.portfolio() function and created portfolios using two strategies. However, by setting the argument verbose = TRUE in Return.portfolio() function.  I can create a list of beginning of period (BOP) and end of period (EOP) weights and values in addition to the portfolio returns, and contributions.
+
+We can access these from the resultant list-object created from Return.portfolio() function. The resultant list contains $returns, $contributions, $BOP.Weight, $EOP.Weight, $BOP.Value, and $EOP.Value.
+
+```{r,include=FALSE}
+# Create a portfolio using buy and hold
+Defensive_buy_hold_portfolio<- Return.portfolio(R = Defensive_Portfolio_Wide.XTS, weights = eq_weights, verbose = TRUE )
+Defensive_buy_hold_portfolio_Return<-Defensive_buy_hold_portfolio$returns
+Defensive_buy_hold_portfolio_Return_contributions<-Defensive_buy_hold_portfolio$contribution
+Defensive_buy_hold_portfolio_bop_wight<-Defensive_buy_hold_portfolio$BOP.Weight
+Defensive_buy_hold_portfolio_eop_wight<-Defensive_buy_hold_portfolio$EOP.Weight
+Defensive_buy_hold_portfolio_bop_value<-Defensive_buy_hold_portfolio$BOP.Value
+Defensive_buy_hold_portfolio_eop_value<-Defensive_buy_hold_portfolio$EOP.Value
+```
+
+```{r,include=FALSE}
+# Create a portfolio using buy and hold
+Defensive_Portfolio_weekly_rebalance_portfolio<-Return.portfolio(R = Defensive_Portfolio_Wide.XTS, weights = eq_weights, rebalance_on = "weeks", verbose = TRUE)
+Defensive_Portfolio_weekly_rebalance_portfolio_Return<-Defensive_Portfolio_weekly_rebalance_portfolio$returns
+Defensive_Portfolio_weekly_rebalance_portfolio_Return_contributions<-Defensive_Portfolio_weekly_rebalance_portfolio$contribution
+Defensive_Portfolio_weekly_rebalance_portfolio_bop_wight<-Defensive_Portfolio_weekly_rebalance_portfolio$BOP.Weight
+Defensive_Portfolio_weekly_rebalance_portfolio_eop_wight<-Defensive_Portfolio_weekly_rebalance_portfolio$EOP.Weight
+Defensive_Portfolio_weekly_rebalance_portfolio_bop_value<-Defensive_Portfolio_weekly_rebalance_portfolio$BOP.Value
+Defensive_Portfolio_weekly_rebalance_portfolio_eop_value<-Defensive_Portfolio_weekly_rebalance_portfolio$EOP.Value
+```
+
+```{r,include=FALSE}
+Defensive_buy_hold_portfolio_eop_wight<-cbind(Defensive_buy_hold_portfolio_eop_wight$ AEP, Defensive_Portfolio_weekly_rebalance_portfolio_eop_wight$ AEP)
+colnames(Defensive_buy_hold_portfolio_eop_wight)<-c("Defensive and Passive", "Defensive and Active")
+plot(Defensive_buy_hold_portfolio_eop_wight, legend.loc = "bottomright", main = "End of the Period Weight of  AEP")
+```
+
+```{r, include=TRUE}
+Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long.DF<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long.CSV")
+Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long.DF<-Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long.DF[,-1]
+Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long.DF$Date<-as.Date(Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long.DF$Date)
+head(Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long.DF)
+```
+
+
+```{r,include=FALSE}
+Aggressive_Portfolio<-Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long.DF%>%
+  select(Date, Ticker, Logarithmic_Return, Risk_Free)
+Aggressive_Portfolio_Wide<-spread(Aggressive_Portfolio[,-4], Ticker, Logarithmic_Return)
+Aggressive_Portfolio_Wide.XTS<-xts(Aggressive_Portfolio_Wide[,-1], order.by = Aggressive_Portfolio_Wide$Date)
+head(Aggressive_Portfolio_Wide.XTS[,1:7])
+```
+
+
+```{r,include=FALSE}
+N<-ncol(Aggressive_Portfolio_Wide.XTS)
+# Create the weights
+eq_weights<-c(rep(1/N,N))
+sum(eq_weights)
+```
+
+Creating a portfolio using the buy and hold strategy using Return.portfolio() . Note, we do not need to specify a rebalance period . Call this buy_hold_portfolio.
+
+```{r,include=FALSE}
+# Create a portfolio using buy and hold
+Aggressive_buy_hold_portfolio<- Return.portfolio(R = Aggressive_Portfolio_Wide.XTS, weights = eq_weights )
+head(Aggressive_buy_hold_portfolio, 10)
+```
+
+Creating a portfolio where I will rebalance my weights weekly . Using Return.portfolio() with the argument rebalance_on = "weeks". Call this weekly_rebalance_portfolio.
+
+```{r,include=FALSE}
+# Create a portfolio rebalancing daily 
+Aggressive_weekly_rebalance_portfolio<-Return.portfolio(R = Aggressive_Portfolio_Wide.XTS, weights = eq_weights, rebalance_on = "weeks" )
+head(Aggressive_weekly_rebalance_portfolio, 10)
+```
+
+In this section we will see the difference between buy_hold_portfolio and weekly_rebalance_portfolio return. 
+
+```{r,include=FALSE}
+# Plot the time-series
+par(mfrow = c(2, 1), mar = c(2, 4, 2, 2))
+plot.zoo(Aggressive_buy_hold_portfolio, col = "red", ylab  = "Aggressive And Passive", main = "Aggressive Portfolio Return")
+plot.zoo(Aggressive_weekly_rebalance_portfolio, col = "blue", ylab  = "Aggressive And Active")
+```
+
+Now I will explore the functionality of the Return.portfolio() function and created portfolios using two strategies. However, by setting the argument verbose = TRUE in Return.portfolio() function.  I can create a list of beginning of period (BOP) and end of period (EOP) weights and values in addition to the portfolio returns, and contributions.
+
+We can access these from the resultant list-object created from Return.portfolio() function. The resultant list contains $returns, $contributions, $BOP.Weight, $EOP.Weight, $BOP.Value, and $EOP.Value.
+
+```{r,include=FALSE}
+# Create a portfolio using buy and hold
+Aggressive_buy_hold_portfolio<- Return.portfolio(R = Aggressive_Portfolio_Wide.XTS, weights = eq_weights, verbose = TRUE )
+Aggressive_buy_hold_portfolio_Return<-Aggressive_buy_hold_portfolio$returns
+Aggressive_buy_hold_portfolio_Return_contributions<-Aggressive_buy_hold_portfolio$contribution
+Aggressive_buy_hold_portfolio_bop_wight<-Aggressive_buy_hold_portfolio$BOP.Weight
+Aggressive_buy_hold_portfolio_eop_wight<-Aggressive_buy_hold_portfolio$EOP.Weight
+Aggressive_buy_hold_portfolio_bop_value<-Aggressive_buy_hold_portfolio$BOP.Value
+Aggressive_buy_hold_portfolio_eop_value<-Aggressive_buy_hold_portfolio$EOP.Value
+```
+
+```{r,include=FALSE}
+# Create a portfolio using buy and hold
+Aggressive_Portfolio_weekly_rebalance_portfolio<-Return.portfolio(R = Aggressive_Portfolio_Wide.XTS, weights = eq_weights, rebalance_on = "weeks", verbose = TRUE)
+Aggressive_Portfolio_weekly_rebalance_portfolio_Return<-Aggressive_Portfolio_weekly_rebalance_portfolio$returns
+Aggressive_Portfolio_weekly_rebalance_portfolio_Return_contributions<-Aggressive_Portfolio_weekly_rebalance_portfolio$contribution
+Aggressive_Portfolio_weekly_rebalance_portfolio_bop_wight<-Aggressive_Portfolio_weekly_rebalance_portfolio$BOP.Weight
+Aggressive_Portfolio_weekly_rebalance_portfolio_eop_wight<-Aggressive_Portfolio_weekly_rebalance_portfolio$EOP.Weight
+Aggressive_Portfolio_weekly_rebalance_portfolio_bop_value<-Aggressive_Portfolio_weekly_rebalance_portfolio$BOP.Value
+Aggressive_Portfolio_weekly_rebalance_portfolio_eop_value<-Aggressive_Portfolio_weekly_rebalance_portfolio$EOP.Value
+```
+
+```{r,include=FALSE}
+Aggressive_buy_hold_portfolio_eop_wight<-cbind(Aggressive_buy_hold_portfolio_eop_wight$ ADSK, Aggressive_Portfolio_weekly_rebalance_portfolio_eop_wight$ ADSK)
+colnames(Aggressive_buy_hold_portfolio_eop_wight)<-c("Aggressive and Passive", "Aggressive and Active")
+plot(Aggressive_buy_hold_portfolio_eop_wight, legend.loc = "bottomright", main = "End of the Period Weight of  ADSK")
+```
+
+
+```{r, include=TRUE}
+buy_hold_portfolios.XTS<-cbind(Defensive_buy_hold_portfolio_Return, Aggressive_buy_hold_portfolio_Return)
+colnames(buy_hold_portfolios.XTS)<-c("Defensive_buy_hold_portfolio_Return", "Aggressive_buy_hold_portfolio_Return")
+plot(buy_hold_portfolios.XTS, legend.loc = "bottomright", main = "Passive Portfolios")
+```
+
+```{r, include=TRUE}
+weekly_rebalance_portfolios.XTS<-cbind(Defensive_Portfolio_weekly_rebalance_portfolio_Return, Aggressive_Portfolio_weekly_rebalance_portfolio_Return)
+colnames(weekly_rebalance_portfolios.XTS)<-c("Defensive_Portfolio_weekly_rebalance_portfolio_Return", "Aggressive_Portfolio_weekly_rebalance_portfolio_Return")
+plot(weekly_rebalance_portfolios.XTS, legend.loc = "bottomright", main = "Active Portfolios")
+```
+
+```{r, include=TRUE}
+buy_hold_portfolios<-data.frame(Date=index(buy_hold_portfolios.XTS), coredata(buy_hold_portfolios.XTS))
+write.csv(buy_hold_portfolios, "C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/buy_hold_portfolios.csv")
+weekly_rebalance_portfolios<-data.frame(Date=index(weekly_rebalance_portfolios.XTS), coredata(weekly_rebalance_portfolios.XTS))
+write.csv(weekly_rebalance_portfolios, "C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/weekly_rebalance_portfolios.csv")
+```
+

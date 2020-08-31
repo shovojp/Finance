@@ -1,0 +1,113 @@
+---
+titlD: "Portfolio_Performance_06"
+author: "Md. Shahadat Hossain"
+date: "2 October 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# Quietly make sure all the required packages are installed
+invisible(lapply(c('quantmod', 'dplyr', 'tidyquant','tidyverse', 'XML'), function(pkg) {
+  if (system.file(package = pkg) == '')
+    install.packages(pkg)
+}))
+```
+
+```{r,include=TRUE, warning=FALSE, message=FALSE}
+library(quantmod)
+library(dplyr)
+library(tidyquant)
+library(tidyverse)
+library(XML)
+```
+
+# Buy and Hold Portfolio Statistics
+
+```{r, include=TRUE}
+buy_hold_portfolios<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/buy_hold_portfolios.csv")
+buy_hold_portfolios<-buy_hold_portfolios[,-1]
+buy_hold_portfolios$Date<-as.Date(buy_hold_portfolios$Date)
+buy_hold_portfolios.XTS<-xts(buy_hold_portfolios[,-1], order.by = buy_hold_portfolios$Date)
+head(buy_hold_portfolios.XTS)
+```
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Buy_Hold_Portfolio_Mean_Returns<-as.data.frame(lapply(buy_hold_portfolios.XTS,FUN = mean))
+Buy_Hold_Portfolio_Mean_Returns<-gather(Buy_Hold_Portfolio_Mean_Returns)
+colnames(Buy_Hold_Portfolio_Mean_Returns)<-c("Portfolio", "Mean_Return")
+head(Buy_Hold_Portfolio_Mean_Returns)
+```
+
+
+```{r, include=TRUE}
+Buy_Hold_Portfolio_Return_Variance<-as.data.frame(lapply(buy_hold_portfolios.XTS,FUN = var))
+Buy_Hold_Portfolio_Return_Variance<-gather(Buy_Hold_Portfolio_Return_Variance)
+colnames(Buy_Hold_Portfolio_Return_Variance)<-c("Portfolio", "Return_Variance")
+head(Buy_Hold_Portfolio_Return_Variance)
+```
+
+
+```{r, include=TRUE}
+Buy_Hold_Portfolio_Return_Standard_Deviation<-as.data.frame(lapply(buy_hold_portfolios.XTS,FUN = sd))
+Buy_Hold_Portfolio_Return_Standard_Deviation<-gather(Buy_Hold_Portfolio_Return_Standard_Deviation)
+colnames(Buy_Hold_Portfolio_Return_Standard_Deviation)<-c("Portfolio", "Return_Standard_Deviation")
+head(Buy_Hold_Portfolio_Return_Standard_Deviation)
+```
+
+```{r, include=TRUE}
+Buy_Hold_Portfolio_Return_Statistics<-Buy_Hold_Portfolio_Mean_Returns%>%
+  inner_join(Buy_Hold_Portfolio_Return_Variance, by="Portfolio")%>%
+  inner_join(Buy_Hold_Portfolio_Return_Standard_Deviation, by="Portfolio")
+Buy_Hold_Portfolio_Return_Statistics
+```
+# Weekly Rebalance Portfolio Statistics
+
+```{r, include=TRUE}
+weekly_rebalance_portfolios<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/weekly_rebalance_portfolios.csv")
+weekly_rebalance_portfolios<-weekly_rebalance_portfolios[,-1]
+weekly_rebalance_portfolios$Date<-as.Date(weekly_rebalance_portfolios$Date)
+weekly_rebalance_portfolios.XTS<-xts(weekly_rebalance_portfolios[,-1], order.by = weekly_rebalance_portfolios$Date)
+head(weekly_rebalance_portfolios.XTS)
+```
+
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Weekly_Rebalance_Portfolio_Mean_Returns<-as.data.frame(lapply(weekly_rebalance_portfolios.XTS,FUN = mean))
+Weekly_Rebalance_Portfolio_Mean_Returns<-gather(Weekly_Rebalance_Portfolio_Mean_Returns)
+colnames(Weekly_Rebalance_Portfolio_Mean_Returns)<-c("Portfolio", "Mean_Return")
+head(Weekly_Rebalance_Portfolio_Mean_Returns)
+```
+
+```{r, include=TRUE}
+Weekly_Rebalance_Portfolio_Return_Variance<-as.data.frame(lapply(weekly_rebalance_portfolios.XTS,FUN = var))
+Weekly_Rebalance_Portfolio_Return_Variance<-gather(Weekly_Rebalance_Portfolio_Return_Variance)
+colnames(Weekly_Rebalance_Portfolio_Return_Variance)<-c("Portfolio", "Return_Variance")
+head(Weekly_Rebalance_Portfolio_Return_Variance)
+```
+
+```{r, include=TRUE}
+Weekly_Rebalance_Portfolio_Return_Standard_Deviation<-as.data.frame(lapply(weekly_rebalance_portfolios.XTS,FUN = sd))
+Weekly_Rebalance_Portfolio_Return_Standard_Deviation<-gather(Weekly_Rebalance_Portfolio_Return_Standard_Deviation)
+colnames(Weekly_Rebalance_Portfolio_Return_Standard_Deviation)<-c("Portfolio", "Return_Standard_Deviation")
+head(Weekly_Rebalance_Portfolio_Return_Standard_Deviation)
+```
+
+```{r, include=TRUE}
+Weekly_Rebalance_Portfolio_Return_Statistics<-Weekly_Rebalance_Portfolio_Mean_Returns%>%
+  inner_join(Weekly_Rebalance_Portfolio_Return_Variance, by="Portfolio")%>%
+  inner_join(Weekly_Rebalance_Portfolio_Return_Standard_Deviation, by="Portfolio")
+Weekly_Rebalance_Portfolio_Return_Statistics
+```
+
+```{r, include=TRUE}
+Portfolio_Return_Statistics<-rbind(Buy_Hold_Portfolio_Return_Statistics, Weekly_Rebalance_Portfolio_Return_Statistics)
+Portfolio_Return_Statistics
+```

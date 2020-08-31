@@ -1,0 +1,264 @@
+---
+title: "Portfolio_Stocks_Excess_Return_04"
+author: "Md. Shahadat Hossain"
+date: "2 October 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# Quietly make sure all the required packages are installed
+invisible(lapply(c('quantmod', 'dplyr', 'tidyquant','tidyverse', 'XML', 'lubridate'), function(pkg) {
+  if (system.file(package = pkg) == '')
+    install.packages(pkg)
+}))
+```
+
+```{r,include=TRUE, warning=FALSE, message=FALSE}
+library(quantmod)
+library(dplyr)
+library(tidyquant)
+library(tidyverse)
+library(XML)
+library(lubridate)
+```
+
+
+
+```{r, include=TRUE}
+Defensive_Portfolio_Stocks_Logarithmic_Returns.DF<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Defensive_Portfolio_Stocks_Logarithmic_Returns.csv")
+Defensive_Portfolio_Stocks_Logarithmic_Returns.DF<-Defensive_Portfolio_Stocks_Logarithmic_Returns.DF[,-1]
+Defensive_Portfolio_Stocks_Logarithmic_Returns.DF$Date<-as.Date(Defensive_Portfolio_Stocks_Logarithmic_Returns.DF$Date)
+head(Defensive_Portfolio_Stocks_Logarithmic_Returns.DF[,1:6])
+```
+
+
+```{r, include=TRUE}
+Defensive_Portfolio_Stocks_Logarithmic_Returns.Long<-Defensive_Portfolio_Stocks_Logarithmic_Returns.DF %>% gather(Ticker, Defensive_Portfolio_Stocks_Logarithmic_Returns.DF, AEP:XEL)
+colnames(Defensive_Portfolio_Stocks_Logarithmic_Returns.Long)<-c("Date", "Ticker", "Logarithmic_Return")
+head(Defensive_Portfolio_Stocks_Logarithmic_Returns.Long)
+```
+
+```{r, include=TRUE}
+Famma_French_Ticker<-c("SPY", "SHY")
+```
+
+```{r, include=TRUE, warning=FALSE}
+start_date<-"2014-08-31"
+end_date<-"2019-08-31"
+Famma_French <- tq_get(Famma_French_Ticker,
+                      get  = "stock.prices",
+                      from = start_date,
+                      to   = end_date)
+```
+
+```{r, include=TRUE}
+length(levels(factor(Famma_French$symbol)))
+```
+
+
+```{r, include=TRUE}
+Famma_French <- Famma_French[,c(1,2,8)]
+colnames(Famma_French) <- c("Ticker", "Date", "Price")
+head(Famma_French)
+```
+
+```{r, include=TRUE}
+Famma_French_Spread<-spread(Famma_French, Ticker, Price)
+head(Famma_French_Spread)
+```
+
+```{r, include=TRUE}
+Famma_French_Spread.XTS<-xts(Famma_French_Spread[,-1], order.by = Famma_French_Spread$Date)
+class(Famma_French_Spread.XTS)
+```
+
+```{r, include=TRUE}
+Famma_French_Spread.XTS<-Return.calculate(Famma_French_Spread.XTS, method = "log")
+Famma_French_Spread.XTS<-Famma_French_Spread.XTS[-1,]
+head(Famma_French_Spread.XTS)
+```
+
+```{r, include=TRUE}
+Famma_French<-data.frame(Date=index(Famma_French_Spread.XTS), coredata(Famma_French_Spread.XTS))
+head(Famma_French)
+```
+
+```{r, include=TRUE}
+Famma_French<-Famma_French%>%
+  mutate(Market_Return=SPY)%>%
+  mutate(Risk_Free=SHY)%>%
+  select(Date, Market_Return, Risk_Free)
+head(Famma_French)
+```
+
+```{r, include=TRUE}
+write.csv(Famma_French,"C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Famma_French.CSV")
+```
+
+```{r, include=TRUE}
+Defensive_Portfolio_Stocks_Logarithmic_Returns.Long<-Defensive_Portfolio_Stocks_Logarithmic_Returns.Long%>%
+  inner_join(Famma_French, by = "Date")
+head(Defensive_Portfolio_Stocks_Logarithmic_Returns.Long)
+write.csv(Defensive_Portfolio_Stocks_Logarithmic_Returns.Long,"C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Defensive_Portfolio_Stocks_Logarithmic_Returns.Long.CSV")
+```
+
+```{r, include=TRUE}
+Defensive_Portfolio_Stocks_Excess_Return.DF<-Defensive_Portfolio_Stocks_Logarithmic_Returns.Long%>%
+  mutate(Excess_Return=Logarithmic_Return-Risk_Free)%>%
+  select(Date, Ticker, Excess_Return)
+head(Defensive_Portfolio_Stocks_Excess_Return.DF)
+```
+
+```{r, include=TRUE}
+Defensive_Portfolio_Stocks_Excess_Return_Wide.DF<-spread(Defensive_Portfolio_Stocks_Excess_Return.DF, Ticker, Excess_Return)
+head(Defensive_Portfolio_Stocks_Excess_Return_Wide.DF[,1:6])
+```
+
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Mean_Excess_Returns<-as.data.frame(lapply(Defensive_Portfolio_Stocks_Excess_Return_Wide.DF[,-1],FUN = mean))
+Mean_Excess_Returns<-gather(Mean_Excess_Returns)
+colnames(Mean_Excess_Returns)<-c("Ticker", "Mean_Excess_Returns")
+head(Mean_Excess_Returns)
+```
+
+
+```{r, include=TRUE}
+Excess_Return_Variance<-as.data.frame(lapply(Defensive_Portfolio_Stocks_Excess_Return_Wide.DF[,-1],FUN = var))
+Excess_Return_Variance<-gather(Excess_Return_Variance)
+colnames(Excess_Return_Variance)<-c("Ticker", "Excess_Return_Variance")
+head(Excess_Return_Variance)
+```
+
+
+```{r, include=TRUE}
+Excess_Retrun_Statistics<-Mean_Excess_Returns%>%
+  inner_join(Excess_Return_Variance, by = 'Ticker')
+head(Excess_Retrun_Statistics)
+```
+
+```{r, include=TRUE}
+Excess_Return_Standard_Deviation<-as.data.frame(lapply(Defensive_Portfolio_Stocks_Excess_Return_Wide.DF[,-1],FUN = sd))
+Excess_Return_Standard_Deviation<-gather(Excess_Return_Standard_Deviation)
+colnames(Excess_Return_Standard_Deviation)<-c("Ticker", "Excess_Return_Standard_Deviation")
+head(Excess_Return_Standard_Deviation)
+```
+
+
+
+```{r, include=TRUE}
+Excess_Retrun_Statistics<-Excess_Retrun_Statistics%>%
+  inner_join(Excess_Return_Standard_Deviation, by = 'Ticker')
+head(Excess_Retrun_Statistics)
+```
+
+
+
+```{r, include=TRUE}
+par(mfrow=c(2,2))
+# Defensive stocks Mean_Excess_Returns Distribution
+hist(Excess_Retrun_Statistics$Mean_Excess_Returns, freq=FALSE, xlab = "Mean of Excess Returns", ylab = "Density", main = "Mean of Excess_Returns for Defensive Stocks")
+lines(density(Excess_Retrun_Statistics$Mean_Excess_Returns),col = "red")
+# Defensive stocks Return_Variance Distribution
+hist(Excess_Retrun_Statistics$Excess_Return_Variance, freq=FALSE, xlab = "Excess Return Variance", ylab = "Density", main = "Excess_Return Variance for Defensive Stocks")
+lines(density(Excess_Retrun_Statistics$Excess_Return_Variance),col = "red")
+# Defensive stocks Excess_Return_Standard_Deviation Distribution
+hist(Excess_Retrun_Statistics$Excess_Return_Standard_Deviation, freq=FALSE, xlab = "Excess Return Standard Deviation", ylab = "Density", main = "Excess_Return Std for Defensive Stocks")
+lines(density(Excess_Retrun_Statistics$Excess_Return_Standard_Deviation),col = "red")
+```
+
+
+```{r, include=TRUE}
+Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF<-read.csv("C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Aggressive_Portfolio_Stocks_Logarithmic_Returns.csv")
+Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF<-Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF[,-1]
+Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF$Date<-as.Date(Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF$Date)
+head(Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF[,1:6])
+```
+
+
+```{r, include=TRUE}
+Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long<-Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF %>% gather(Ticker, Aggressive_Portfolio_Stocks_Logarithmic_Returns.DF, ADSK:WYNN)
+colnames(Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long)<-c("Date", "Ticker", "Logarithmic_Return")
+head(Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long)
+```
+
+
+```{r, include=TRUE}
+Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long<-Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long%>%
+  inner_join(Famma_French, by = "Date")
+head(Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long)
+write.csv(Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long,"C:/Users/Md. Shahadat Hossain/Desktop/Portfolio_Management_2019/Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long.CSV")
+```
+
+```{r, include=TRUE}
+Aggressive_Portfolio_Stocks_Excess_Return.DF<-Aggressive_Portfolio_Stocks_Logarithmic_Returns.Long%>%
+  mutate(Excess_Return=Logarithmic_Return-Risk_Free)%>%
+  select(Date, Ticker, Excess_Return)
+head(Aggressive_Portfolio_Stocks_Excess_Return.DF)
+```
+
+```{r, include=TRUE}
+Aggressive_Portfolio_Stocks_Excess_Return_Wide.DF<-spread(Aggressive_Portfolio_Stocks_Excess_Return.DF, Ticker, Excess_Return)
+head(Aggressive_Portfolio_Stocks_Excess_Return_Wide.DF[,1:6])
+```
+
+
+```{r, include=TRUE}
+options(scipen = TRUE)
+Mean_Excess_Returns<-as.data.frame(lapply(Aggressive_Portfolio_Stocks_Excess_Return_Wide.DF[,-1],FUN = mean))
+Mean_Excess_Returns<-gather(Mean_Excess_Returns)
+colnames(Mean_Excess_Returns)<-c("Ticker", "Mean_Excess_Returns")
+head(Mean_Excess_Returns)
+```
+
+
+```{r, include=TRUE}
+Excess_Return_Variance<-as.data.frame(lapply(Aggressive_Portfolio_Stocks_Excess_Return_Wide.DF[,-1],FUN = var))
+Excess_Return_Variance<-gather(Excess_Return_Variance)
+colnames(Excess_Return_Variance)<-c("Ticker", "Excess_Return_Variance")
+head(Excess_Return_Variance)
+```
+
+
+```{r, include=TRUE}
+Excess_Retrun_Statistics<-Mean_Excess_Returns%>%
+  inner_join(Excess_Return_Variance, by = 'Ticker')
+head(Excess_Retrun_Statistics)
+```
+
+```{r, include=TRUE}
+Excess_Return_Standard_Deviation<-as.data.frame(lapply(Aggressive_Portfolio_Stocks_Excess_Return_Wide.DF[,-1],FUN = sd))
+Excess_Return_Standard_Deviation<-gather(Excess_Return_Standard_Deviation)
+colnames(Excess_Return_Standard_Deviation)<-c("Ticker", "Excess_Return_Standard_Deviation")
+head(Excess_Return_Standard_Deviation)
+```
+
+
+
+```{r, include=TRUE}
+Excess_Retrun_Statistics<-Excess_Retrun_Statistics%>%
+  inner_join(Excess_Return_Standard_Deviation, by = 'Ticker')
+head(Excess_Retrun_Statistics)
+```
+
+
+
+```{r, include=TRUE}
+par(mfrow=c(2,2))
+# Aggressive stocks Mean_Excess_Returns Distribution
+hist(Excess_Retrun_Statistics$Mean_Excess_Returns, freq=FALSE, xlab = "Mean of Excess Returns", ylab = "Density", main = "Mean of Excess_Returns for Aggressive Stocks")
+lines(density(Excess_Retrun_Statistics$Mean_Excess_Returns),col = "red")
+# Aggressive stocks Return_Variance Distribution
+hist(Excess_Retrun_Statistics$Excess_Return_Variance, freq=FALSE, xlab = "Excess Return Variance", ylab = "Density", main = "Excess_Return Variance for Aggressive Stocks")
+lines(density(Excess_Retrun_Statistics$Excess_Return_Variance),col = "red")
+# Aggressive stocks Excess_Return_Standard_Deviation Distribution
+hist(Excess_Retrun_Statistics$Excess_Return_Standard_Deviation, freq=FALSE, xlab = "Excess Return Standard Deviation", ylab = "Density", main = "Excess_Return Std for Aggressive Stocks")
+lines(density(Excess_Retrun_Statistics$Excess_Return_Standard_Deviation),col = "red")
+```
